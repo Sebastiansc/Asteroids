@@ -48,8 +48,8 @@
 	window.addEventListener("DOMContentLoaded", function(){
 	  let canvasEl = document.getElementById("canvasEl");
 	  let context = canvasEl.getContext("2d");
-	  let gameView = new GameView(canvasEl.width, canvasEl.height, context);
-	  gameView.start();
+	  let gameView = new GameView(canvasEl.width, canvasEl.height);
+	  gameView.start(context);
 	});
 
 
@@ -62,7 +62,6 @@
 
 	function GameView (width, height, context){
 	  this.game = new Game(width, height);
-	  this.context = context;
 	  this.lastTime = 0;
 	}
 
@@ -70,20 +69,22 @@
 	  this.bindKeyHandlers();
 	  const img = new Image();
 	  img.onload = () => {
-	    this.context.drawImage(img, 0, 0);
+	    context.drawImage(img, 0, 0);
 	  };
 	  img.src = 'images/BackgroundForAsteroids.png';
-	  // const animateCallback = () => {
-	  //   this.game.step();
-	  //   img.onload();
-	  //   this.game.draw(context);
-	  //   context.clearRect(0,0,this.width, this.height);
-	  //   requestAnimationFrame(animateCallback);
-	  // };
+	  const animateCallback = () => {
+	    let delta = new Date().getTime() - this.lastTime;
+	    this.game.step(delta);
+	    img.onload();
+	    this.game.draw(context);
+	    context.clearRect(0,0,this.width, this.height);
+	    this.lastTime = new Date().getTime();
+	    requestAnimationFrame(animateCallback);
+	  };
 	  //
-	  // animateCallback();
-	  let currentTime = new Date().getTime();
-	  requestAnimationFrame(this.animate.bind(this));
+	  animateCallback();
+	  // let currentTime = new Date().getTime();
+	  // requestAnimationFrame(this.animate.bind(this));
 	};
 
 	GameView.prototype.animate = function() {
@@ -292,8 +293,8 @@
 
 
 	MovingObject.prototype.move = function (delta) {
-	  this.pos[0] += this.vel[0] * delta / 20;
-	  this.pos[1] += this.vel[1] * delta / 20;
+	  this.pos[0] += this.vel[0] * delta / 18;
+	  this.pos[1] += this.vel[1] * delta / 18;
 	  if(this.game.outOfBounds(this.pos)){
 	    if(this.isWrappable()){
 	      let wrappedPos = this.game.wrap(this.pos);
@@ -341,8 +342,8 @@
 	  MovingObject.call(this,
 	                    {pos: pos,
 	                     vel: [0, 0],
-	                     color: "red",
-	                     radius: 20,
+	                     color: "white",
+	                     radius: 10,
 	                     game: game
 	                    });
 	}
@@ -371,9 +372,18 @@
 	};
 
 	Ship.prototype.fireBullet = function () {
+	  let velX, velY;
+	  if (this.vel[0] === 0){
+	    velX = this.pos[0] > 0 ?  4 : -4;
+	  } else { velX = this.vel[0]; }
+
+	  if (this.vel[1] === 0){
+	    velY = this.pos[1] > 0 ?  4 : -4;
+	  } else { velY = this.vel[1]; }
+
 	  let bullet = new Bullet(
 	    [this.pos[0], this.pos[1]],
-	    [this.vel[0] * 2, this.vel[1] * 2],
+	    [velX * 8, velY * 8],
 	    this.game);
 
 	  this.game.bullets.push(bullet);
@@ -699,7 +709,7 @@
 	    pos: pos,
 	    vel: vel,
 	    color: "red",
-	    radius: 5,
+	    radius: 2,
 	    game: game
 	  });
 	}
