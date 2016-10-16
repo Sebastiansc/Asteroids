@@ -47,9 +47,9 @@
 	const GameView = __webpack_require__(1);
 	window.addEventListener("DOMContentLoaded", function(){
 	  let canvasEl = document.getElementById("canvasEl");
-	  let gameView = new GameView(canvasEl);
-	  canvasEl = canvasEl.getContext("2d");
-	  gameView.start(canvasEl);
+	  let context = canvasEl.getContext("2d");
+	  let gameView = new GameView(canvasEl.width, canvasEl.height, context);
+	  gameView.start();
 	});
 
 
@@ -60,37 +60,39 @@
 	const Game = __webpack_require__(2);
 	const key = __webpack_require__(7);
 
-	function GameView (context){
+	function GameView (width, height, context){
 	  this.game = new Game(width, height);
+	  this.context = context;
 	  this.lastTime = 0;
 	}
 
 	GameView.prototype.start = function (context) {
 	  this.bindKeyHandlers();
 	  const img = new Image();
-	  img.onload = function() {
-	    context.drawImage(img, 0, 0);
+	  img.onload = () => {
+	    this.context.drawImage(img, 0, 0);
 	  };
 	  img.src = 'images/BackgroundForAsteroids.png';
-	  const animateCallback = () => {
-	    this.game.step();
-	    img.onload();
-	    this.game.draw(context);
-	    context.clearRect(0,0,this.width, this.height);
-	    requestAnimationFrame(animateCallback);
-	  };
-
-	  animateCallback();
+	  // const animateCallback = () => {
+	  //   this.game.step();
+	  //   img.onload();
+	  //   this.game.draw(context);
+	  //   context.clearRect(0,0,this.width, this.height);
+	  //   requestAnimationFrame(animateCallback);
+	  // };
+	  //
+	  // animateCallback();
 	  let currentTime = new Date().getTime();
-	  requestAnimationFrame(partial(this.animate, currentTime));
+	  requestAnimationFrame(this.animate.bind(this));
 	};
 
 	GameView.prototype.animate = function() {
 	  let delta = new Date().getTime() - this.lastTime;
 	  this.game.step(delta);
-	  this.game.draw(context);
+	  this.game.draw(this.context);
+	  this.context.clearRect(0,0,this.width, this.height);
 	  this.lastTime = new Date().getTime();
-	  requestAnimationFrame(this.animate(new Date().getTime(), context));
+	  requestAnimationFrame(this.animate.bind(this));
 	};
 
 	GameView.prototype.bindKeyHandlers = function () {
@@ -133,13 +135,13 @@
 
 	Game.NUM_ASTEROIDS = 10;
 
-	Game.prototype.step = function () {
-	  this.moveObjects();
+	Game.prototype.step = function (delta) {
+	  this.moveObjects(delta);
 	  this.checkCollisions();
 	};
 
-	Game.prototype.moveObjects = function () {
-	  this.allObjects().forEach( object => object.move());
+	Game.prototype.moveObjects = function (delta) {
+	  this.allObjects().forEach( object => object.move(delta));
 	};
 
 	Game.prototype.checkCollisions = function () {
@@ -289,9 +291,9 @@
 	};
 
 
-	MovingObject.prototype.move = function () {
-	  this.pos[0] += this.vel[0];
-	  this.pos[1] += this.vel[1];
+	MovingObject.prototype.move = function (delta) {
+	  this.pos[0] += this.vel[0] * delta / 20;
+	  this.pos[1] += this.vel[1] * delta / 20;
 	  if(this.game.outOfBounds(this.pos)){
 	    if(this.isWrappable()){
 	      let wrappedPos = this.game.wrap(this.pos);
