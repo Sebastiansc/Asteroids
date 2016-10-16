@@ -47,7 +47,7 @@
 	const GameView = __webpack_require__(1);
 	window.addEventListener("DOMContentLoaded", function(){
 	  let canvasEl = document.getElementById("canvasEl");
-	  let gameView = new GameView(canvasEl.width, canvasEl.height);
+	  let gameView = new GameView(canvasEl);
 	  canvasEl = canvasEl.getContext("2d");
 	  gameView.start(canvasEl);
 	});
@@ -60,7 +60,7 @@
 	const Game = __webpack_require__(2);
 	const key = __webpack_require__(7);
 
-	function GameView (width, height){
+	function GameView (context){
 	  this.game = new Game(width, height);
 	  this.lastTime = 0;
 	}
@@ -81,11 +81,12 @@
 	  };
 
 	  animateCallback();
-	  // requestAnimationFrame(this.animate(new Date().getTime(), context));
+	  let currentTime = new Date().getTime();
+	  requestAnimationFrame(partial(this.animate, currentTime));
 	};
 
-	GameView.prototype.animate = function(currentTime, context) {
-	  let delta = currentTime - this.lastTime;
+	GameView.prototype.animate = function() {
+	  let delta = new Date().getTime() - this.lastTime;
 	  this.game.step(delta);
 	  this.game.draw(context);
 	  this.lastTime = new Date().getTime();
@@ -94,16 +95,16 @@
 
 	GameView.prototype.bindKeyHandlers = function () {
 	  key("w", () => {
-	    this.game.ship.power([0.5, -4]);
+	    this.game.ship.power([0, -4]);
 	  });
 	  key("a", () => {
-	    this.game.ship.power([-4,0.5]);
+	    this.game.ship.power([-4,0]);
 	  });
 	  key("s", () => {
-	    this.game.ship.power([0.5,4]);
+	    this.game.ship.power([0,4]);
 	  });
 	  key("d", () => {
-	    this.game.ship.power([4,0.5]);
+	    this.game.ship.power([4,0]);
 	  });
 	  key("space", () => {
 	    this.game.ship.fireBullet();
@@ -130,7 +131,7 @@
 	  this.bullets = [];
 	}
 
-	Game.NUM_ASTEROIDS = 2;
+	Game.NUM_ASTEROIDS = 10;
 
 	Game.prototype.step = function () {
 	  this.moveObjects();
@@ -220,7 +221,7 @@
 	function Asteroid(pos, game){
 	  MovingObject.call(this,
 	    {color: "orange",
-	    radius: 30,
+	    radius: 20,
 	    pos: pos,
 	    game: game,
 	    vel: Util.randomVec()
@@ -260,8 +261,7 @@
 /***/ function(module, exports) {
 
 	function MovingObject (options) {
-	  this.centerX = options.pos[0];
-	  this.centerY = options.pos[1];
+	  this.pos = options.pos;
 	  this.vel = options.vel;
 	  this.radius = options.radius;
 	  this.color = options.color;
@@ -273,8 +273,8 @@
 	  canvasEl.beginPath();
 
 	  canvasEl.arc(
-	    this.centerX,
-	    this.centerY,
+	    this.pos[0],
+	    this.pos[1],
 	    this.radius,
 	    0,
 	    2 * Math.PI,
@@ -290,13 +290,13 @@
 
 
 	MovingObject.prototype.move = function () {
-	  this.centerX += this.vel[0];
-	  this.centerY += this.vel[1];
-	  if(this.game.outOfBounds([this.centerX, this.centerY])){
+	  this.pos[0] += this.vel[0];
+	  this.pos[1] += this.vel[1];
+	  if(this.game.outOfBounds(this.pos)){
 	    if(this.isWrappable()){
-	      let wrappedPos = this.game.wrap([this.centerX, this.centerY]);
-	      this.centerX = wrappedPos[0];
-	      this.centerY = wrappedPos[1];
+	      let wrappedPos = this.game.wrap(this.pos);
+	      this.pos[0] = wrappedPos[0];
+	      this.pos[1] = wrappedPos[1];
 	    } else {
 	      this.game.remove(this);
 	    }
@@ -313,8 +313,7 @@
 	  }
 
 	  let radiusSum = (this.radius + otherObject.radius);
-	  return distance([this.centerX, this.centerY],
-	    [otherObject.centerX, otherObject.centerY]) < radiusSum;
+	  return distance(this.pos, otherObject.pos) < radiusSum;
 	};
 
 	MovingObject.prototype.collideWith = function (otherObject) {
@@ -339,7 +338,7 @@
 	function Ship (pos, game) {
 	  MovingObject.call(this,
 	                    {pos: pos,
-	                     vel: [0.5,0.5],
+	                     vel: [0, 0],
 	                     color: "red",
 	                     radius: 20,
 	                     game: game
@@ -351,9 +350,9 @@
 
 	Ship.prototype.relocate = function () {
 	  let newPos = this.game.randomPosition();
-	  this.centerX = newPos[0];
-	  this.centerY = newPos[1];
-	  this.vel = [0.5,0.5];
+	  this.pos[0] = newPos[0];
+	  this.pos[1] = newPos[1];
+	  this.vel = [0,0];
 	};
 
 	Ship.prototype.power = function (impulse) {
@@ -371,7 +370,7 @@
 
 	Ship.prototype.fireBullet = function () {
 	  let bullet = new Bullet(
-	    [this.centerX, this.centerY],
+	    [this.pos[0], this.pos[1]],
 	    [this.vel[0] * 2, this.vel[1] * 2],
 	    this.game);
 
